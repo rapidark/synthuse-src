@@ -9,3 +9,4 @@ native/uiabridge/Debug
 !native/uiabridge/bin
 !native/MsgHook/bin
 !native/SetMsgHook/bin
+/target/

@@ -91,17 +91,28 @@ public class WindowsEnumeratedXml implements Runnable{
 	    return generateWindowsXml(infoList, "EnumeratedWindows");
 	}
 	
+	public static String getWin32Xml(HWND desktopRootHwnd) {
+		final Map<String, WindowInfo> infoList = getWin32XmlMap(desktopRootHwnd);
+	    return generateWindowsXml(infoList, "EnumeratedWindows");
+	}
+	
 	public static Map<String, WindowInfo> getWin32XmlMap() {
+		HWND desktopRootHwnd = Api.User32Ex.instance.GetDesktopWindow();
+		return getWin32XmlMap(desktopRootHwnd);
+	}
+	
+	public static Map<String, WindowInfo> getWin32XmlMap(HWND desktopRootHwnd) {
 		final Map<String, WindowInfo> infoList = new LinkedHashMap<String, WindowInfo>();
 		
-		HWND desktopRootHwnd = Api.User32Ex.instance.GetDesktopWindow();
+//		HWND desktopRootHwnd = Api.User32Ex.instance.GetDesktopWindow();
 		WindowInfo wi = new WindowInfo(desktopRootHwnd, false);
-		wi.controlType = "DesktopRoot";
+//		wi.controlType = "DesktopRoot";
 		infoList.put(wi.hwndStr, wi);
 	    
 	    class ParentWindowCallback implements WinUser.WNDENUMPROC {
 			@Override
 			public boolean callback(HWND hWnd, Pointer lParam) {
+				System.out.println("ParentWindowCallback:" + hWnd);
 				WindowInfo wi = new WindowInfo(hWnd, false);
 				infoList.put(wi.hwndStr, wi);
 				infoList.putAll(EnumerateWin32ChildWindows(hWnd));
@@ -109,6 +120,7 @@ public class WindowsEnumeratedXml implements Runnable{
 			}
 	    }
 	    Api.User32Ex.instance.EnumWindows(new ParentWindowCallback(), 0);
+	    System.out.println("finish");
 	    return infoList;
 	}
 	
@@ -131,11 +143,13 @@ public class WindowsEnumeratedXml implements Runnable{
 	
 	public static Map<String, WindowInfo> EnumerateWin32ChildWindows(HWND parentHwnd)
 	{
+		System.out.println("EnumerateWin32ChildWindows:" + parentHwnd);
 		final Map<String, WindowInfo> infoList = new LinkedHashMap<String, WindowInfo>();
 		
 	    class ChildWindowCallback implements WinUser.WNDENUMPROC {
 			@Override
 			public boolean callback(HWND hWnd, Pointer lParam) {
+				System.out.println("ChildWindowCallback:");
 				WindowInfo wi = new WindowInfo(hWnd, true);
 				infoList.put(wi.hwndStr, wi);
 				return true;

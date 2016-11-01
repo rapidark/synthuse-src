@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.synthuse.Api.WinDefEx.*;
+
 import com.sun.jna.Callback;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
@@ -293,6 +294,11 @@ public class Api {
 	public interface User32Ex extends W32APIOptions {  
 		User32Ex instance = (User32Ex) Native.loadLibrary("user32", User32Ex.class, DEFAULT_OPTIONS);  
 		
+		long GetWindowLongA(HWND hWnd, int nIndex);
+		HWND FindWindowEx(HWND hwndParent, HWND hwndChildAfter, String className, String windowName);
+		HWND FindWindowExA(HWND hwndParent, HWND hwndChildAfter, String className, String windowName);
+		HWND FindWindow(String winClass, String title);
+		
 		int SetWindowLongPtr(HWND hWnd, int nIndex, Callback callback);
 		LRESULT CallWindowProc(LONG_PTR proc, HWND hWnd, int uMsg, WPARAM uParam, LPARAM lParam);
 		
@@ -301,9 +307,10 @@ public class Api {
 		void SwitchToThisWindow(HWND hWnd, boolean fAltTab);
 		HWND SetFocus(HWND hWnd);
 		
-		HWND FindWindow(String winClass, String title);
+		
 		LRESULT PostMessage(HWND hWnd, int Msg, WPARAM wParam, LPARAM lParam);
-		LRESULT SendMessage(HWND hWnd, int Msg, WPARAM wParam, LPARAM lParam);
+		LRESULT SendMessage(HWND hWnd, int Msg, WPARAM wParam, int lParam);
+		LRESULT SendMessage(HWND hWnd, int Msg, WPARAM wParam, IntByReference lParam);
 		LRESULT SendMessage(HWND hWnd, int Msg, WPARAM wParam, LVITEM_VISTA lParam);
 	    LRESULT SendMessageA(HWND editHwnd, int wmGettext, long l, byte[] lParamStr);
 	    boolean DestroyWindow(HWND hWnd);
@@ -355,6 +362,8 @@ public class Api {
 		boolean GetMenuItemRect(HWND hWnd, HMENU hMenu, int uItem, RECT rect);
 		
 		int GetDlgCtrlID(HWND hwndCtl);
+		HWND GetDlgItem(HWND hDlg, int nIDDlgItem);
+		 
 		int GetDlgItemText(HWND hDlg, int nIDDlgItem, byte[] buffer, int nMaxCount);
 	}  
 	
@@ -383,13 +392,14 @@ public class Api {
 	    //LPVOID VirtualAllocEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
 	    
 	    //int VirtualAllocEx(HANDLE hProcess, int lpAddress, int dwSize, DWORD flAllocationType, DWORD flProtect);
-	    IntByReference VirtualAllocEx(HANDLE hProc, IntByReference addr, SIZE_T size, int allocType, int prot);
+	    int VirtualAllocEx(HANDLE hProc, Pointer addr, SIZE_T size, int allocType, int prot);
 		Pointer VirtualAllocEx(HANDLE hProc, int i, int lngMemLen2, int allocType, int pAGE_READWRITE);  
-	    boolean VirtualFreeEx(HANDLE hProcess, IntByReference lpAddress, SIZE_T dwSize, DWORD dwFreeType);
-	    boolean WriteProcessMemory(HANDLE hProcess, IntByReference lpBaseAddress, Pointer lpBuffer, int len, IntByReference bytesWritten);
+	    boolean VirtualFreeEx(HANDLE hProcess, int lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+	    boolean WriteProcessMemory(HANDLE hProcess, int lpBaseAddress, Pointer lpBuffer, int len, IntByReference bytesWritten);
+	    boolean WriteProcessMemory(HANDLE hProcess, int lpBaseAddress, LVITEM_VISTA lpBuffer, int len, IntByReference bytesWritten);
 	    
 	    //boolean WriteProcessMemory(Pointer p, long address, Pointer buffer, int size, IntByReference written);  
-	    boolean ReadProcessMemory(Pointer hProcess, long inBaseAddress, Pointer outputBuffer, int nSize, IntByReference outNumberOfBytesRead);
+	    boolean ReadProcessMemory(HANDLE hProcess, IntByReference inBaseAddress, Pointer outputBuffer, int nSize, IntByReference outNumberOfBytesRead);
 		int WriteProcessMemory(HANDLE handle, Pointer lngMemVar2, LVITEM_VISTA lvi,
 				int lngMemLen2, IntByReference byteIO);
 		int ReadProcessMemory(HANDLE handle, Pointer lngMemVar1,
@@ -503,7 +513,7 @@ public class Api {
 	public void SetDialogFocus(HWND hdlg, HWND hwndControl) {
 		WPARAM wp = new WPARAM(hwndControl.getPointer().getLong(0));
 		LPARAM lp = new LPARAM(1);
-		user32.SendMessage(hdlg, WM_NEXTDLGCTL, wp, lp); 
+		user32.SendMessage(hdlg, WM_NEXTDLGCTL, wp, 1); 
 	}
 	
 	public boolean showWindow(HWND handle) {
@@ -772,9 +782,9 @@ public class Api {
 		User32Ex.instance.GetWindowThreadProcessId(listViewHwnd, pointer);
 		int pid = pointer.getPointer().getInt(0);
 	    Pointer process = Kernel32Ex.instance.OpenProcess(Api.PROCESS_VM_WRITE | Api.PROCESS_VM_OPERATION, false, new Pointer(pid));
-	    IntByReference addr = new IntByReference(0);
+	    Pointer addr = new Pointer(0);
 	    SIZE_T size = new SIZE_T(4096);
-	    IntByReference epLvi = Kernel32Ex.instance.VirtualAllocEx(new HANDLE(process), addr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	    int epLvi = Kernel32Ex.instance.VirtualAllocEx(new HANDLE(process), addr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	    
 	    LVITEM_VISTA lvitem = new LVITEM_VISTA();
 		lvitem.stateMask = LVIS_FOCUSED | LVIS_SELECTED;
@@ -790,7 +800,7 @@ public class Api {
 	public static void SelectListItemByIndex(HWND listHwnd, int index)
 	{
 		//com.sun.jna.platform.win32.User32.INSTANCE
-		Api.User32Ex.instance.SendMessage(listHwnd, LB_SETCURSEL, new WPARAM(index), new LPARAM(0));
+		Api.User32Ex.instance.SendMessage(listHwnd, LB_SETCURSEL, new WPARAM(index), 0);
 		SelectListViewItemByIndex(listHwnd, index);
 		//GetListViewItemByIndex(listHwnd, index);
 		//LVITEM lvitem = new LVITEM();

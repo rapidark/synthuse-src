@@ -254,7 +254,7 @@ public class MessageHookFrame extends JFrame {
 		if (threadId == 0 ) // don't allow global
 		{
 			System.out.println("Not allowing global message hook " + threadId);
-			User32.INSTANCE.SetWindowLongPtr(myHwnd, GWLP_WNDPROC, oldWndProc); //restore default WNDPROC
+//			User32.INSTANCE.SetWindowLongPtr(myHwnd, GWLP_WNDPROC, oldWndProc); //restore default WNDPROC
 			quit = true;
 			return;
 		}
@@ -278,7 +278,7 @@ public class MessageHookFrame extends JFrame {
 		quit = true;
 		appendLine("Message hook stopped");
 		final HWND myHwnd = new HWND(Native.getWindowPointer(MessageHookFrame.this));
-		User32.INSTANCE.SetWindowLongPtr(myHwnd, GWLP_WNDPROC, oldWndProc); //restore default WNDPROC
+//		User32.INSTANCE.SetWindowLongPtr(myHwnd, GWLP_WNDPROC, oldWndProc); //restore default WNDPROC
 		unhook(msgHook);
 	}
 	

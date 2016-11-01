@@ -9,6 +9,7 @@ package org.synthuse;
 
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.io.UnsupportedEncodingException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -16,6 +17,7 @@ import org.synthuse.Api.*;
 
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.Netapi32Util.User;
 import com.sun.jna.platform.win32.WinDef.HMENU;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.LPARAM;
@@ -60,7 +62,19 @@ public class WindowInfo {
     	this.framework = "win32";
         byte[] buffer = new byte[1024];
         User32Ex.instance.GetWindowTextA(hWnd, buffer, buffer.length);
-        text = Native.toString(buffer);
+        try {
+			text = new String(buffer, "gbk");
+			WPARAM wParam = new WPARAM(0);
+			LPARAM lParam = new LPARAM(0);
+			User32Ex.instance.SendMessage(hwnd, Api.WM_COMMAND, wParam, lParam);
+			long id = User32Ex.instance.GetWindowLongA(hWnd, 0);
+//			System.out.println("text: " + text.trim() + ",id:" +id+ ",W:" + wParam.intValue()+ ",L:" + lParam.intValue());
+//			System.out.println(User32Ex.instance.GetWindowLongA(hWnd, 1));
+			
+			//Native.toString(buffer);
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
         if (text.isEmpty())
         	text = new Api().sendWmGetText(hWnd);
         //if (text.isEmpty()) {

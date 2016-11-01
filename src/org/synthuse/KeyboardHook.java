@@ -135,7 +135,7 @@ public class KeyboardHook implements Runnable{
 	    			events.keyPressed(target);
 	    		//if (lParam.vkCode == 87) //w
 	    		//	quit = true;
-	    		return User32.INSTANCE.CallNextHookEx(hHook, nCode, wParam, lParam.getPointer());
+	    		return User32.INSTANCE.CallNextHookEx(hHook, nCode, wParam, new WinDef.LPARAM(lParam.getPointer().getInt(0)));
 	    	}
 		};
 		
