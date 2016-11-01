@@ -238,12 +238,12 @@ public class WindowsMonitor {
                // vItem[0].iItem = i;     //行号
                // vItem[0].iSubItem = j;  //列号
 //                vItem.cchTextMax = (int)vBuffer.size();//所能存储的最大的文本为256字节
-                Memory memory =(Memory) vItem.pszText;
+                Memory pszTextMemory =(Memory) vItem.pszText;
 //                vItem.pszText = new Pointer(pointer2);//memory;//new Pointer(pointer2);// ((int)pointer + size);
-                displayMemory(memory);
+                displayMemory(pszTextMemory);
                 UINTByReference vNumberOfBytesRead = new UINTByReference(new UINT(0));
-                Pointer tempPointer = vItem.pszText;
-                System.out.println("temppointer:" + Pointer.nativeValue(tempPointer));
+//                Pointer tempPointer = vItem.pszText;
+//                System.out.println("temppointer:" + Pointer.nativeValue(tempPointer));
                 
 //                Pointer pointerTest = pointer2;
 //                System.out.println("pointerTest:" + pointerTest);
@@ -265,19 +265,19 @@ public class WindowsMonitor {
                 int isSuccess = user32.SendMessage(hwnd, new UINT(4171), i, pointer);
                 System.out.println("isSuccess:" + isSuccess);
                 displayMemory("after send");
-                displayMemory(memory);
+                displayMemory(pszTextMemory);
                 //从pointer指向的内存地址开始读取数据,写入缓冲区vBuffer中
                // ReadProcessMemory(process, ((int)pointer + size), Marshal.UnsafeAddrOfPinnedArrayElement(vBuffer, 0), vBuffer.Length, ref vNumberOfBytesRead);
                 Pointer bufferPointer = vBuffer.getPointer(0);
 //                bufferPointer = Marshal.UnsafeAddrOfPinnedArrayElement(vBuffer, 0);
-                 tempPointer = vItem.pszText;
-                kernel32.ReadProcessMemory(process, pointer2, bufferPointer, (int)vBuffer.size(),  vNumberOfBytesRead);
-                kernel32.ReadProcessMemory(process, (int)Pointer.nativeValue(tempPointer), bufferPointer, (int)vBuffer.size(),  vNumberOfBytesRead);
+//                 tempPointer = vItem.pszText;
+//                kernel32.ReadProcessMemory(process, pointer2, bufferPointer, (int)vBuffer.size(),  vNumberOfBytesRead);
+                kernel32.ReadProcessMemory(process, (int)Pointer.nativeValue(pszTextMemory), bufferPointer, (int)vBuffer.size(),  vNumberOfBytesRead);
                 String vText = "";
 				try {
 					vText = new String(vBuffer.getByteArray(0, vNumberOfBytesRead.getValue().intValue()), "gbk");
 					System.out.println(vText);
-					System.out.println(memory.getWideString(0));
+					System.out.println(pszTextMemory.getByteBuffer(0, vNumberOfBytesRead.getValue().intValue()));
 				} catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
 				}
