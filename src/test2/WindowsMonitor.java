@@ -1,5 +1,6 @@
 package test2;
 
+import java.awt.Point;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.List;
@@ -58,13 +59,20 @@ public class WindowsMonitor {
                                             UINTByReference vNumberOfBytesRead//读取长度
         );
         //[DllImport("kernel32.dll")]//将数据写入内存中
+//        boolean WriteProcessMemory(
+//                int hProcess,//由OpenProcess返回的进程句柄
+//                int lpBaseAddress, //要写的内存首地址,再写入之前,此函数将先检查目标地址是否可用,并能容纳待写入的数据
+//                IntByReference lpBuffer, //指向要写的数据的指针
+//                int nSize, //要写入的字节数
+//                UINTByReference vNumberOfBytesRead
+//);
         boolean WriteProcessMemory(
-                                            int hProcess,//由OpenProcess返回的进程句柄
-                                            int lpBaseAddress, //要写的内存首地址,再写入之前,此函数将先检查目标地址是否可用,并能容纳待写入的数据
-                                            Pointer lpBuffer, //指向要写的数据的指针
-                                            int nSize, //要写入的字节数
-                                            UINTByReference vNumberOfBytesRead
-        );
+                int hProcess,//由OpenProcess返回的进程句柄
+                int lpBaseAddress, //要写的内存首地址,再写入之前,此函数将先检查目标地址是否可用,并能容纳待写入的数据
+                Pointer lpBuffer, //指向要写的数据的指针
+                int nSize, //要写入的字节数
+                UINTByReference vNumberOfBytesRead
+);
         //[DllImport("kernel32.dll")]
         boolean CloseHandle(int handle);
         //[DllImport("kernel32.dll")]//在其它进程中释放申请的虚拟内存空间
@@ -82,14 +90,16 @@ public class WindowsMonitor {
     /// </summary>
     public static class LVITEM extends Structure  //结构体
     {
+    	private static final int MEMSIZE = 260;
+        
         //public int a;
         public int mask;//说明此结构中哪些成员是有效的
         public int iItem;//项目的索引值(可以视为行号)从0开始
         public int iSubItem; //子项的索引值(可以视为列号)从0开始
         public int state;//子项的状态
         public int stateMask; //状态有效的屏蔽位
-        public Pointer pszText;  //主项或子项的名称
-        public int cchTextMax;//pszText所指向的缓冲区大小
+        public Pointer pszText = new Memory(MEMSIZE);;  //主项或子项的名称
+        public int cchTextMax = MEMSIZE;//pszText所指向的缓冲区大小
         
 		@Override
 		protected List<?> getFieldOrder() {
@@ -167,23 +177,44 @@ public class WindowsMonitor {
         process = kernel32.OpenProcess(power, false, processId);
         //申请代码的内存区,返回申请到的虚拟内存首地址
         pointer = kernel32.VirtualAllocEx(process, new Pointer(0), new UINT(4096), new UINT(MEM_RESERVE.intValue() | MEM_COMMIT.intValue()), PAGE_READWRITE);
+        
         pointer2 = kernel32.VirtualAllocEx(process, new Pointer(0), new UINT(4096), new UINT(MEM_RESERVE.intValue() | MEM_COMMIT.intValue()), PAGE_READWRITE);
+        
         String[][] tempStr;//二维数组
         String[] temp = new String[cols];
 
-        tempStr = GetListViewItmeValue(rows, cols);//将要读取的其他程序中的ListView控件中的文本内容保存到二维数组中
+        tempStr = GetListViewItmeValue(1, 1);//将要读取的其他程序中的ListView控件中的文本内容保存到二维数组中
+//        tempStr = GetListViewItmeValue(rows, cols);//将要读取的其他程序中的ListView控件中的文本内容保存到二维数组中
 
 //        listView1.Items.Clear();//清空LV控件信息
         //输出数组中保存的其他程序的LV控件信息
-        for (int i = 0; i < rows; i++)
-        {
-            for (int j = 0; j < cols; j++)
-            {
-                temp[j] = tempStr[i][j];
-            }
+//        for (int i = 0; i < rows; i++)
+//        {
+//            for (int j = 0; j < cols; j++)
+//            {
+//                temp[j] = tempStr[i][j];
+//            }
 //            ListViewItem lvi = new ListViewItem(temp);
 //            listView1.Items.Add(lvi);
-        }
+//        }
+    }
+    
+    private void displayMemory1(String info) {
+    	Memory memory = readMemory(process, pointer, 4096);
+        System.out.println(info + ", m1["+memory.toString()+"]" +Arrays.toString(memory.getByteArray(0, 4096)));
+    }
+    private void displayMemory2(String info) {
+    	Memory memory = readMemory(process, pointer2, 4096);
+        System.out.println(info + ", m2["+memory.toString()+"]" +Arrays.toString(memory.getByteArray(0, 4096)));
+    }
+    
+    private void displayMemory(Memory memory) {
+    	System.out.println("memory:" + Arrays.toString(memory.getByteArray(0, 256)));
+    }
+    
+    private void displayMemory(String info) {
+    	displayMemory1(info);
+    	displayMemory2(info);
     }
 
     /// <summary>
@@ -202,39 +233,55 @@ public class WindowsMonitor {
                 int size = 40;// Marshal.SizeOf(typeof(LVITEM));
 //                byte[] vBuffer = new byte[256];//定义一个临时缓冲区
                 Memory vBuffer = new Memory(256);
-                LVITEM[] vItem = new LVITEM[1];
-                vItem[0] = new LVITEM();
-                vItem[0].mask = LVIF_TEXT;//说明pszText是有效的
+                LVITEM vItem = new LVITEM();
+                vItem.mask = LVIF_TEXT;//说明pszText是有效的
                // vItem[0].iItem = i;     //行号
                // vItem[0].iSubItem = j;  //列号
-                vItem[0].cchTextMax = (int)vBuffer.size();//所能存储的最大的文本为256字节
-                vItem[0].pszText = new Pointer(pointer2);// ((int)pointer + size);
+//                vItem.cchTextMax = (int)vBuffer.size();//所能存储的最大的文本为256字节
+                Memory memory =(Memory) vItem.pszText;
+//                vItem.pszText = new Pointer(pointer2);//memory;//new Pointer(pointer2);// ((int)pointer + size);
+                displayMemory(memory);
                 UINTByReference vNumberOfBytesRead = new UINTByReference(new UINT(0));
-
+                Pointer tempPointer = vItem.pszText;
+                System.out.println("temppointer:" + Pointer.nativeValue(tempPointer));
+                
+//                Pointer pointerTest = pointer2;
+//                System.out.println("pointerTest:" + pointerTest);
+//                System.out.println("pointerTest:" + Pointer.nativeValue(pointerTest));
                 //把数据写到vItem中
                 //pointer为申请到的内存的首地址
                 //UnsafeAddrOfPinnedArrayElement:获取指定数组中指定索引处的元素的地址
                 
                 //IntPtr intPtr = Marshal.UnsafeAddrOfPinnedArrayElement(vItem, 0);
-                Pointer intPtr = vItem[0].getPointer();
-                kernel32.WriteProcessMemory(process, pointer, intPtr, size,  vNumberOfBytesRead);
-
+                long pa = Pointer.nativeValue(vItem.getPointer());
+                IntByReference intPtr = new IntByReference((int)pa);
+               
+                displayMemory("before write");
+                kernel32.WriteProcessMemory(process, pointer, vItem.getPointer(), size,  vNumberOfBytesRead);
+                displayMemory("after write");
+                
+//                displayMemory("before send");
                 //发送LVM_GETITEMW消息给hwnd,将返回的结果写入pointer指向的内存空间
-                user32.SendMessage(hwnd, LVM_GETITEMW, i, pointer);
-
+                int isSuccess = user32.SendMessage(hwnd, new UINT(4171), i, pointer);
+                System.out.println("isSuccess:" + isSuccess);
+                displayMemory("after send");
+                displayMemory(memory);
                 //从pointer指向的内存地址开始读取数据,写入缓冲区vBuffer中
                // ReadProcessMemory(process, ((int)pointer + size), Marshal.UnsafeAddrOfPinnedArrayElement(vBuffer, 0), vBuffer.Length, ref vNumberOfBytesRead);
                 Pointer bufferPointer = vBuffer.getPointer(0);
 //                bufferPointer = Marshal.UnsafeAddrOfPinnedArrayElement(vBuffer, 0);
+                 tempPointer = vItem.pszText;
                 kernel32.ReadProcessMemory(process, pointer2, bufferPointer, (int)vBuffer.size(),  vNumberOfBytesRead);
-                
-                String vText = "aaa";
+                kernel32.ReadProcessMemory(process, (int)Pointer.nativeValue(tempPointer), bufferPointer, (int)vBuffer.size(),  vNumberOfBytesRead);
+                String vText = "";
 				try {
 					vText = new String(vBuffer.getByteArray(0, vNumberOfBytesRead.getValue().intValue()), "gbk");
+					System.out.println(vText);
+					System.out.println(memory.getWideString(0));
 				} catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
 				}
-				System.out.println("["+i+", "+j+"]" +vText.trim());
+				//System.out.println("["+i+", "+j+"]" +vText.trim());
 //                String vText = vBuffer.getWideString(0, vNumberOfBytesRead.getValue());
 //                string vText = Encoding.Unicode.GetString(vBuffer, 0, (int)vNumberOfBytesRead); ;
                 tempStr[i][j] = vText;
@@ -243,6 +290,13 @@ public class WindowsMonitor {
         kernel32.VirtualFreeEx(process, pointer, new UINT( 0), MEM_RELEASE);//在其它进程中释放申请的虚拟内存空间,MEM_RELEASE方式很彻底,完全回收
         kernel32.CloseHandle(process);//关闭打开的进程对象
         return tempStr;
+    }
+    
+    public static Memory readMemory(int process, int address, int bytesToRead) {
+        Memory output = new Memory(bytesToRead);
+        UINTByReference readedBytes = new UINTByReference();
+        Kernel32.instance.ReadProcessMemory(process, address, output, bytesToRead, readedBytes);
+        return output;
     }
     
     public static void main(String[] args) {
